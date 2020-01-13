@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <meta charset="utf-8" />
+		<title>Index</title>
+	</head>
+<style>
+ul {
+  /*
+  border: solid 1px;
+  */
+  width: 100%;
+  min-height: 200;
+}
+.ico, .info {
+  cursor: pointer;
+}
+.info {
+  border-radius: 5px;
+  border: solid 1px;
+  width: 15px;
+ 
+}
+div {
+  /*
+  border: solid 1px;
+  */
+}
+.modal {
+  border: solid 1px;
+  width: 400px;
+  margin: 100px auto;
+
+  
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+}
+
+.modal .modal-content div {
+  margin: 10px;
+}
+
+.modal div button {
+  margin: 10px auto;
+}
+</style>
+	<body>
+    <div id="app">
+
+    </div>
+
+  
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script>
+const courseAxios = axios.create({
+  baseURL: 'http://localhost/api/',
+});
+
+const modal = {
+  props: ['visible', 'line1', 'line2', 'line3'],
+  data() {
+    return {
+      innerVisible: false,
+    };
+  },
+  mounted() {
+    this.innerVisible = !!this.visible;
+  },
+  watch: {
+    visible(value) {
+      this.innerVisible = !!value;
+    },
+  },
+  methods: {
+    click() {      
+      this.$emit('onClose');
+    },
+  },
+  template: `<div v-if="innerVisible" class="modal">
+     <div class="modal-content">
+     <div>{{line1}}</div>
+     <div>{{line2}}</div>
+     <div>{{line3}}</div>
+     <div> <slot></slot> </div>
+     <div><button @click="click">Close</button></div>
+   </div>
+  </div>`,
+};
+Vue.component('modal', modal);
+
+Vue.component('info', {
+  props: {
+    data: {
+      type: Object,
+      required: true,
+    },
+  },
+  data() {
+    return {
+      isModalVisible: false,
+    };
+  },
+  methods: {
+    close() {
+      
+    },
+    onModalClose() {
+      this.isModalVisible = false;
+    },
+  },
+  template: `
+ <modal :visible="isModalVisible" @onClose="onModalClose" >
+          <div>ID: {{course.id}}</div>
+          <div>Name: {{course.name}}</div>
+          <img width="100" height="100"
+           :src="(course.images || { original: { url: ''} }).original.url" />
+      </modal>
+`,
+});
+
+const levelComp = {
+  props: {
+    course: {
+      type: Object,
+      default: {},
+    },
+    level: {
+      type: Object,
+      default: {
+        name: '',
+      },
+    },
+  },
+  computed: {
+    isCourseLevel() {
+       return !this.level.parent_id;
+    },
+    patchIcon() {
+      return this.isCourseLevel ? '⚡' : '';
+    },
+    icon() {
+      if (this.levelContent && this.levelContent.resource_type) {
+        const { resource_type } = this.levelContent; 
+        switch(resource_type) {
+          case 'Video':
+            return '📹';
+          case 'Quiz':
+            return '📋';
+          case 'Document':
+            return '📒';
+        }        
+      }
+      return this.childs.length ? '📂' : '📁';
+    },
+  },
+  data() {
+    return {
+       childs: [],
+       levelContent: {},
+    };
+  },
+  template: `<li>
+       <span><span class="ico" @click="click"> {{ icon }} </span> {{level.name}} <span class="ico" @click="indexCourseLevel"> {{patchIcon}} </span> </span>
+       <ul>
+          <li v-for="item in childs"> 
+            <level :level="item"></level>
+         </li>
+       </ul>
+    </li>`,
+  mounted() {
+    this.loadContent();
+  },
+  methods: {
+    click() {
+      if (this.childs.length) {
+        this.childs = [];
+      } else {
+        this.load();        
+      }      
+    },
+    load() {
+      courseAxios.get('/levels', {
+                     params: {
+                      where: JSON.stringify({
+                         parent_id: this.level.id,
+                      }),
+                      skip: 0,
+                  }
+      })
+       .then(response => response.data.data.levels)
+       .then(list => {
+          this.childs = list;          
+       });
+    },
+    indexCourseLevel() {
+      courseAxios.get(`/course_levels`, {
+        params: {
+          where: JSON.stringify({
+             course_id: this.course.id,
+             level_id: this.level.id,
+          }),
+        }
+      }).then(response => response.data.data.course_level)
+      .then(list => list[0])
+      .then(courseLevel => {
+         const {
+           id,
+           course_id,
+           index,
+           level_id,
+         } = courseLevel;
+      const payload = {
+        course_id,
+        level_id,
+        id,
+        index,
+      }; 
+          const command = `curl -XPATCH -H 'Content-Type: application/json' --data '${JSON.stringify(payload)}' http://localhost:3009/course_levels/${id}`;
+      console.log(command);
+      courseAxios.patch(`/course_levels/${id}`, payload)
+      .then(() => alert('Course level indexed'))
+      .catch(error => alert(`Error: ${error.message}`));
+      });
+    },
+    loadContent() {
+      courseAxios.get('/level_contents', {
+        params: {
+          where: JSON.stringify({
+            level_id: this.level.id,
+          }),
+          skip: 0,
+        },
+      })
+      .then(response => response.data.data.level_contents)
+      .then(list => {        
+          this.levelContent = list[0] || {};
+      });
+    }
+  },
+};
+Vue.component('level', levelComp);
+const courseComp = {
+  props: {
+    course: {
+      type: Object,
+      required: true,
+    }
+  },
+  computed: {
+    icon() {
+       return this.childs.length ? '📖' : '📘';
+    },
+  },
+  data() {
+    return {
+       isModalVisible: false,
+       childs: [],
+    };
+  },
+  template: `<li>
+      <modal :visible="isModalVisible" @onClose="onModalClose" >
+          <div>ID: {{course.id}}</div>
+          <div>Name: {{course.name}}</div>
+          <img width="100" height="100"
+           :src="(course.images || { original: { url: ''} }).original.url" />
+      </modal>
+      <span><span @click="click">{{icon}}</span>
+         {{course.name}} <span @click="info" class="info"> ℹ </span>
+      </span>
+      <ul>        
+        <level v-for="item in childs" :level="item" :course="course"> 
+         </level> 
+      </ul>
+</li>`,
+  components: {
+    level: levelComp,
+  },
+  methods: {
+    onModalClose() {
+      this.isModalVisible = false;
+    },
+    info() {
+      this.isModalVisible = true;
+    },
+    click() {
+       if (this.childs.length) {
+           this.childs = [];
+       } else {
+         courseAxios.get(`/courses/${this.course.id}/levels`)
+           .then(response => response.data.data.levels)
+           .then(list => {
+             this.childs = list;
+           });      
+       }
+    },
+  },
+};
+
+new Vue({
+  el: '#app',
+  data: {
+    courseId: '5daa042f4340d20011fb234c',
+    course: {
+      name: ''
+    },
+    list: [],
+    levels: [],
+  },
+  watch: {
+    courseId(id) {
+      this.load(id);
+    },
+  },
+  mounted() {
+    this.loadAll();
+  },
+  methods: {
+    loadAll(skip = 0) {
+      const list = [0,1,2,3,4];
+      courseAxios.get(`/courses?skip=${skip}`)
+        .then(response => response.data.data.courses)
+        .then(list => {
+           this.list.push(...list);
+           if (list && list.length) {
+               this.loadAll(this.list .length + list.length);
+           }
+         });
+    },
+  },
+  components: {
+     course: courseComp,
+  },
+  template: `
+<div>    
+      <div><ul>
+         <course v-for="c in list" :course="c"></course>   
+      </ul></div>
+</div>
+  `,
+});
+
+    </script>
+	</body>
+</html>

@@ -1,0 +1,57 @@
+version: "3"
+
+networks:
+  backend:
+    driver: "bridge"
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      args:
+        MONGO_HOST: mongo
+    ports:
+      - "80:80"
+    depends_on:
+      - bff
+    networks:
+      - backend
+
+  users:
+    build:
+      context: ./users
+    command: npm run start:watch
+    volumes:
+      - ./users:/usr/src/app
+    env_file:
+      - ./users/.env
+    depends_on:
+      - mongo
+    networks:
+      - backend
+
+  bff:
+    build:
+      context: ./bff
+    command: npm run start:watch
+    env_file:
+      - ./bff/.env
+    depends_on:
+      - mongo
+      - users 
+    networks:
+      - backend
+
+  mongo:
+    image: "mongo:4"
+    restart: always
+    command: --auth
+    ports:
+      - "27017:27017"
+    env_file:
+      - .env
+    volumes:
+      - ./docker-entrypoint/mongo:/docker-entrypoint-initdb.d
+      - ./data/mongo:/data/db
+    networks:
+      - backend
