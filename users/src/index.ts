@@ -8,6 +8,7 @@
  */
 
 const express = require('express');
+const morgan = require('morgan');
 const axios = require('axios');
 const users = [
   {
@@ -50,6 +51,8 @@ const STATUS_LIST = [
 ];
 
 const server = express();
+
+server.use(morgan('dev'));
 
 const PORT = process.env.PORT || 3000;
 

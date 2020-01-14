@@ -50,6 +50,8 @@ services:
     command: npm run start:watch
     env_file:
       - ./bff/.env
+    volumes:
+      - ./bff:/usr/src/app
     depends_on:
       - mongo
       - users 
