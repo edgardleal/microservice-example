@@ -27,6 +27,20 @@ services:
       - ./users/.env
     depends_on:
       - mongo
+      - address
+    networks:
+      - backend
+
+  address:
+    build:
+      context: ./address
+    command: npm run start:watch
+    volumes:
+      - ./address:/usr/src/app
+    env_file:
+      - ./address/.env
+    depends_on:
+      - mongo
     networks:
       - backend
 

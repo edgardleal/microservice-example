@@ -8,21 +8,45 @@
  */
 
 const express = require('express');
+const axios = require('axios');
 const users = [
   {
     email: 'teste@teste.com',
     name: 'Teste',
+    addressId: 0,
+  },
+  {
+    email: 'teste2@teste.com',
+    name: 'Outro Teste',
+    addressId: 1,
   },
 ];
 
-const result200 = (req, res) => res.json(users);
+function loadAddress(user) {
+  return axios.get(`http://address:3000/${user.addressId}`)
+      .then(response => response.data)
+      .then(address => ({ ...user, address }));
+}
+
+function loadUsers(req, res, next) {
+  return users.reduce((promise, user) => promise.then(() => loadAddress(user)), Promise.resolve())
+    .then(users => {
+      res.json(users);
+      return users;
+    })
+    .catch(next);
+}
+
+const result200 = loadUsers;
 const result500 = (req, res, next) => next(new Error('Internal server error'));
-const resultTimeout = (req, res) => setTimeout(() => res.json(users), 10000);
+const resultTimeout = (req, res, next) => setTimeout(() => loadUsers(req, res, next), 1000);
 
 const STATUS_LIST = [
   result200,
   result500,
+  result200,
   resultTimeout,
+  result200,
 ];
 
 const server = express();
@@ -39,9 +63,7 @@ server.listen(PORT, (err) => {
   if (err) {
     console.error(err);
   }
-
   console.log(`Listeining on port ${PORT}`);
-
 });
 
 module.exports = {
