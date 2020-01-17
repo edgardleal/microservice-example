@@ -40,11 +40,16 @@ function loadUsers(req, res, next) {
 
 const result200 = loadUsers;
 const result500 = (req, res, next) => next(new Error('Internal server error'));
+const result502 = (req, res, next) => {
+  res.status(502);
+  res.end(new Error('Service is not responding'));
+};
 const resultTimeout = (req, res, next) => setTimeout(() => loadUsers(req, res, next), 1000);
 
 const STATUS_LIST = [
   result200,
   result500,
+  result502,
   result200,
   resultTimeout,
   result200,
