@@ -7,7 +7,9 @@
  * @module index.js
  */
 
-const express = require('express');
+import * as express from 'express';
+
+import * as morgan from 'morgan';
 
 /**
  * Accepts just one request at time
@@ -44,6 +46,7 @@ const result500 = (req, res, next) => next(new Error('Internal server error'));
 const resultTimeout = (req, res) => setTimeout(() => res.json(address_list), 10000);
 
 const server = express();
+server.use(morgan('dev'))
 
 const PORT = process.env.PORT || 3000;
 
@@ -62,7 +65,7 @@ server.get('/:id', (req, res, next) => {
   setTimeout(() => {
     locked = false;
     res.json(result);
-  }, TIME_TO_RESPOND);
+  }, Math.floor(Math.random() * TIME_TO_RESPOND));
 });
 
 server.listen(PORT, (err) => {

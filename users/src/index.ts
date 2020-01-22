@@ -7,8 +7,10 @@
  * @module index.js
  */
 
-const express = require('express');
-const axios = require('axios');
+ import * as express from 'express';
+ import axios from 'axios';
+ import * as morgan from 'morgan';
+
 const users = [
   {
     email: 'teste@teste.com',
@@ -43,13 +45,18 @@ const resultTimeout = (req, res, next) => setTimeout(() => loadUsers(req, res, n
 
 const STATUS_LIST = [
   result200,
+  result200,
   result500,
   result200,
+  result200,
   resultTimeout,
+  result200,
   result200,
 ];
 
 const server = express();
+
+server.use(morgan('dev'));
 
 const PORT = process.env.PORT || 3000;
 

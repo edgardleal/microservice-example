@@ -7,17 +7,26 @@
  * @module index.js
  */
 
-const express = require('express');
-const axios = require('axios');
+import * as express from 'express';
 
+import * as morgan from 'morgan';
+
+import axios from 'axios';
 const server = express();
+
+server.use(morgan('dev'));
 
 const PORT = process.env.PORT || 3000;
 
 server.get('/users', (req, res) => {
   axios.get('http://users:3000/')
-    .then(res.json)
-    .catch(res.json);
+    .then(response => response.data)
+    .then(res.json.bind(res))
+    .catch(error => {
+      console.error(error);
+      res.status((error.response || { status: 500 }).status);
+      res.json(error);
+    });
 });
 
 server.listen(PORT, (err) => {

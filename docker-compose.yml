@@ -48,6 +48,8 @@ services:
     build:
       context: ./bff
     command: npm run start:watch
+    volumes:
+      - ./bff:/usr/src/app
     env_file:
       - ./bff/.env
     depends_on:
