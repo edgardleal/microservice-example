@@ -25,9 +25,22 @@ services:
       - ./users:/usr/src/app
     env_file:
       - ./users/.env
+    environment:
+      - "JAEGER_ENDPOINT=http://jaeger:14268/api/traces"
+      - "JAEGER_AGENT_HOST=jaeger"
+      - "JAEGER_AGENT_PORT=5775"
     depends_on:
       - mongo
       - address
+      - jaeger
+    networks:
+      - backend
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "5775:5775/udp"
+      - "16686:16686"
     networks:
       - backend
 
@@ -35,6 +48,10 @@ services:
     build:
       context: ./address
     command: npm run start:watch
+    environment:
+      - "JAEGER_ENDPOINT=http://jaeger:14268/api/traces"
+      - "JAEGER_AGENT_HOST=jaeger"
+      - "JAEGER_AGENT_PORT=5775"
     volumes:
       - ./address:/usr/src/app
     env_file:
@@ -50,6 +67,10 @@ services:
     command: npm run start:watch
     env_file:
       - ./bff/.env
+    volumes:
+      - ./bff:/usr/src/app
+    ports:
+      - "8001:3000"
     depends_on:
       - mongo
       - users 
